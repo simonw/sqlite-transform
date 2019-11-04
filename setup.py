@@ -26,7 +26,7 @@ setup(
         [console_scripts]
         sqlite-transform=sqlite_transform.cli:cli
     """,
-    install_requires=["dateutils", "tqdm"],
+    install_requires=["dateutils", "tqdm", "click"],
     extras_require={"test": ["pytest", "sqlite-utils"]},
     tests_require=["sqlite-transform[test]"],
 )
