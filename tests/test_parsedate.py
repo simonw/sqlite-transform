@@ -1,10 +1,12 @@
 from click.testing import CliRunner
 from sqlite_transform import cli
 import pathlib
+import pytest
 import sqlite_utils
 
 
-def test_parsedatetime(tmpdir):
+@pytest.fixture
+def db_with_dates(tmpdir):
     db_path = str(pathlib.Path(tmpdir) / "data.db")
     db = sqlite_utils.Database(db_path)
     db["example"].insert_all(
@@ -14,10 +16,23 @@ def test_parsedatetime(tmpdir):
         ],
         pk="id",
     )
-    result = CliRunner().invoke(cli.cli, ["parsedatetime", db_path, "example", "dt"])
-    assert 0 == result.exit_code
-    # Did the conversion work?
+    return db_path
+
+
+def test_parsedate(db_with_dates):
+    result = CliRunner().invoke(cli.cli, ["parsedate", db_with_dates, "example", "dt"])
+    assert 0 == result.exit_code, result.output
+    assert [{"id": 1, "dt": "2019-10-05"}, {"id": 2, "dt": "2019-10-06"}] == list(
+        sqlite_utils.Database(db_with_dates)["example"].rows
+    )
+
+
+def test_parsedatetime(db_with_dates):
+    result = CliRunner().invoke(
+        cli.cli, ["parsedatetime", db_with_dates, "example", "dt"]
+    )
+    assert 0 == result.exit_code, result.output
     assert [
         {"id": 1, "dt": "2019-10-05T12:04:00"},
         {"id": 2, "dt": "2019-10-06T00:05:06"},
-    ] == list(db["example"].rows)
+    ] == list(sqlite_utils.Database(db_with_dates)["example"].rows)

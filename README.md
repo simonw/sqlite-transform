@@ -10,10 +10,14 @@ Tool for running transformations on columns in a SQLite database.
 
     $ pip install sqlite-transform
 
-## How to use
+## parsedate and parsedatetime
 
-    $ sqlite-transform parsedatetime my.db mytable column1 column2
+These subcommands will run all values in the specified column through `dateutils.parser.parse()` and replace them with the result, formatted as an ISO timestamp or ISO date.
 
-There are only one subcommand at the moment: `parsedatetime`.
+For example, if the `opened` contains `10/10/2019 08:10:00 PM`, running the following command:
 
-These will run all values in the specified column through `dateutils.parser.parse()` and replace them with the result, formatted as an ISO timestamp.
+    $ sqlite-transform parsedatetime my.db mytable opened
+
+Will result in that value being replaced by `2019-10-10T20:10:00`.
+
+Using the `parsedate` subcommand here would result in `2019-10-10` instead.
