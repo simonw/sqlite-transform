@@ -14,7 +14,7 @@ Tool for running transformations on columns in a SQLite database.
 
 These subcommands will run all values in the specified column through `dateutils.parser.parse()` and replace them with the result, formatted as an ISO timestamp or ISO date.
 
-For example, if the `opened` contains `10/10/2019 08:10:00 PM`, running the following command:
+For example, if a row in the database has an `opened` column which contains `10/10/2019 08:10:00 PM`, running the following command:
 
     $ sqlite-transform parsedatetime my.db mytable opened
 
