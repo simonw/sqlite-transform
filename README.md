@@ -21,3 +21,22 @@ For example, if a row in the database has an `opened` column which contains `10/
 Will result in that value being replaced by `2019-10-10T20:10:00`.
 
 Using the `parsedate` subcommand here would result in `2019-10-10` instead.
+
+## lambda for executing your own code
+
+The `lambda` subcommand lets you specify Python code which will be executed against the column.
+
+Here's how to convert a column to uppercase:
+
+    $ sqlite-transform lambda my.db mytable mycolumn --code='return str(value).upper()'
+
+The code you provide will be compiled into a function that takes `value` as a single argument. You can break your function body into multiple lines:
+
+    $ sqlite-transform lambda my.db mytable mycolumn --code='value = str(value)
+    return value.upper()'
+
+You can also specify Python modules that should be imported and made available to your code using one or more `--import` options:
+
+    $ sqlite-transform lambda my.db mytable mycolumn \
+        --code='return "\n".join(textwrap.wrap(value, 10))' \
+        --import=textwrap
