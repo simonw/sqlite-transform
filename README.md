@@ -28,9 +28,9 @@ The `lambda` subcommand lets you specify Python code which will be executed agai
 
 Here's how to convert a column to uppercase:
 
-    $ sqlite-transform lambda my.db mytable mycolumn --code='return str(value).upper()'
+    $ sqlite-transform lambda my.db mytable mycolumn --code='str(value).upper()'
 
-The code you provide will be compiled into a function that takes `value` as a single argument. You can break your function body into multiple lines:
+The code you provide will be compiled into a function that takes `value` as a single argument. You can break your function body into multiple lines, provided the last line is a `return` statement:
 
     $ sqlite-transform lambda my.db mytable mycolumn --code='value = str(value)
     return value.upper()'
@@ -38,5 +38,5 @@ The code you provide will be compiled into a function that takes `value` as a si
 You can also specify Python modules that should be imported and made available to your code using one or more `--import` options:
 
     $ sqlite-transform lambda my.db mytable mycolumn \
-        --code='return "\n".join(textwrap.wrap(value, 10))' \
+        --code='"\n".join(textwrap.wrap(value, 10))' \
         --import=textwrap

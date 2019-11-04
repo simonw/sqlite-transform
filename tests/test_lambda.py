@@ -1,19 +1,20 @@
 from click.testing import CliRunner
 from sqlite_transform import cli
 import sqlite_utils
+import pytest
 
 
-def test_lambda_single_line(test_db):
+@pytest.mark.parametrize(
+    "code",
+    [
+        "return value.replace('October', 'Spooktober')",
+        # Return is optional:
+        "value.replace('October', 'Spooktober')",
+    ],
+)
+def test_lambda_single_line(test_db, code):
     result = CliRunner().invoke(
-        cli.cli,
-        [
-            "lambda",
-            test_db,
-            "example",
-            "dt",
-            "--code",
-            "return value.replace('October', 'Spooktober')",
-        ],
+        cli.cli, ["lambda", test_db, "example", "dt", "--code", code]
     )
     assert 0 == result.exit_code, result.output
     assert [

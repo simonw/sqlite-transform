@@ -56,7 +56,10 @@ def lambda_(db_path, table, columns, code, imports):
     """
     Transform columns using Python code you supply
     """
-    # First we need to build the code into a function body called fn(value)
+    # If single line and no 'return', add the return
+    if "\n" not in code and not code.strip().startswith("return "):
+        code = "return {}".format(code)
+    # Compile the code into a function body called fn(value)
     new_code = ["def fn(value):"]
     for line in code.split("\n"):
         new_code.append("    {}".format(line))
