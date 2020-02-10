@@ -11,6 +11,8 @@ def test_db(tmpdir):
         [
             {"id": 1, "dt": "5th October 2019 12:04"},
             {"id": 2, "dt": "6th October 2019 00:05:06"},
+            {"id": 3, "dt": ""},
+            {"id": 4, "dt": None},
         ],
         pk="id",
     )

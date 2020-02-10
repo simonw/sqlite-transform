@@ -20,6 +20,8 @@ def test_lambda_single_line(test_db, code):
     assert [
         {"id": 1, "dt": "5th Spooktober 2019 12:04"},
         {"id": 2, "dt": "6th Spooktober 2019 00:05:06"},
+        {"id": 3, "dt": ""},
+        {"id": 4, "dt": None},
     ] == list(sqlite_utils.Database(test_db)["example"].rows)
 
 
@@ -39,6 +41,8 @@ def test_lambda_multiple_lines(test_db):
     assert [
         {"id": 1, "dt": "5TH SPOOKTOBER 2019 12:04"},
         {"id": 2, "dt": "6TH SPOOKTOBER 2019 00:05:06"},
+        {"id": 3, "dt": ""},
+        {"id": 4, "dt": None},
     ] == list(sqlite_utils.Database(test_db)["example"].rows)
 
 
@@ -60,4 +64,6 @@ def test_lambda_import(test_db):
     assert [
         {"id": 1, "dt": "5th OXXober 2019 12:04"},
         {"id": 2, "dt": "6th OXXober 2019 00:05:06"},
+        {"id": 3, "dt": ""},
+        {"id": 4, "dt": None},
     ] == list(sqlite_utils.Database(test_db)["example"].rows)
