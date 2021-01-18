@@ -50,11 +50,22 @@ def parsedatetime(db_path, table, columns):
 )
 @click.argument("table", type=str)
 @click.argument("columns", type=str, nargs=-1)
-@click.option("--code", type=str, required=True)
-@click.option("--import", "imports", type=str, multiple=True)
+@click.option(
+    "--code", type=str, required=True, help="Python code to transform 'value'"
+)
+@click.option(
+    "--import", "imports", type=str, multiple=True, help="Python modules to import"
+)
 def lambda_(db_path, table, columns, code, imports):
     """
-    Transform columns using Python code you supply
+    Transform columns using Python code you supply. For example:
+
+    \b
+    $ sqlite-transform lambda my.db mytable mycolumn
+        --code='"\\n".join(textwrap.wrap(value, 10))'
+        --import=textwrap
+
+    "value" is a variable with the column value to be transformed.
     """
     # If single line and no 'return', add the return
     if "\n" not in code and not code.strip().startswith("return "):
