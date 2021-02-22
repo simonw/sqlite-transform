@@ -41,3 +41,13 @@ You can also specify Python modules that should be imported and made available t
     $ sqlite-transform lambda my.db mytable mycolumn \
         --code='"\n".join(textwrap.wrap(value, 10))' \
         --import=textwrap
+
+### Terminology warning
+
+This tool uses the word "transform" to mean something different from the [sqlite-utils transform](https://sqlite-utils.datasette.io/en/stable/cli.html#transforming-tables) command.
+
+In `sqlite-utils`, "transform" is used to describe running complex alter table statements, see [Executing advanced ALTER TABLE operations in SQLite](https://simonwillison.net/2020/Sep/23/sqlite-advanced-alter-table/)
+
+`sqlite-transform` uses the term to describe performing a transformation or conversion on every value in a column.
+
+I apologize for this confusion! I wish I had used different names for these two concepts.
