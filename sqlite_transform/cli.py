@@ -87,7 +87,10 @@ def jsonsplit(db_path, table, columns, delimiter, type):
 @click.option(
     "--import", "imports", type=str, multiple=True, help="Python modules to import"
 )
-def lambda_(db_path, table, columns, code, imports):
+@click.option(
+    "--dry-run", is_flag=True, help="Show results of running this against first 10 rows"
+)
+def lambda_(db_path, table, columns, code, imports, dry_run):
     """
     Transform columns using Python code you supply. For example:
 
@@ -111,7 +114,26 @@ def lambda_(db_path, table, columns, code, imports):
     for import_ in imports:
         globals[import_] = __import__(import_)
     exec(code_o, globals, locals)
-    _transform(db_path, table, columns, locals["fn"])
+    fn = locals["fn"]
+    if dry_run:
+        # Pull first 20 values for first column and preview them
+        db = sqlite3.connect(db_path)
+        db.create_function("preview_transform", 1, lambda v: fn(v) if v else v)
+        sql = """
+            select
+                [{column}] as value,
+                preview_transform([{column}]) as preview
+            from [{table}] limit 10
+        """.format(
+            column=columns[0], table=table
+        )
+        for row in db.execute(sql).fetchall():
+            print(row[0])
+            print(" --- becomes:")
+            print(row[1])
+            print()
+    else:
+        _transform(db_path, table, columns, fn)
 
 
 def _transform(db_path, table, columns, fn):

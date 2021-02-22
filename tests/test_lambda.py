@@ -70,3 +70,46 @@ def test_lambda_import(test_db_and_path):
         {"id": 3, "dt": ""},
         {"id": 4, "dt": None},
     ] == list(db["example"].rows)
+
+
+def test_lambda_dryrun(test_db_and_path):
+    db, db_path = test_db_and_path
+    result = CliRunner().invoke(
+        cli.cli,
+        [
+            "lambda",
+            db_path,
+            "example",
+            "dt",
+            "--code",
+            "return re.sub('O..', 'OXX', value)",
+            "--import",
+            "re",
+            "--dry-run",
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.output.strip() == (
+        "5th October 2019 12:04\n"
+        " --- becomes:\n"
+        "5th OXXober 2019 12:04\n"
+        "\n"
+        "6th October 2019 00:05:06\n"
+        " --- becomes:\n"
+        "6th OXXober 2019 00:05:06\n"
+        "\n"
+        "\n"
+        " --- becomes:\n"
+        "\n"
+        "\n"
+        "None\n"
+        " --- becomes:\n"
+        "None"
+    )
+    # But it should not have actually modified the table data
+    assert list(db["example"].rows) == [
+        {"id": 1, "dt": "5th October 2019 12:04"},
+        {"id": 2, "dt": "6th October 2019 00:05:06"},
+        {"id": 3, "dt": ""},
+        {"id": 4, "dt": None},
+    ]

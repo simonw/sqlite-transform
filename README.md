@@ -64,6 +64,8 @@ You can also specify Python modules that should be imported and made available t
         --code='"\n".join(textwrap.wrap(value, 10))' \
         --import=textwrap
 
+The `--dry-run` option will output a preview of the transformation against the first ten rows, without modifying the database.
+
 ### Terminology warning
 
 This tool uses the word "transform" to mean something different from the [sqlite-utils transform](https://sqlite-utils.datasette.io/en/stable/cli.html#transforming-tables) command.
