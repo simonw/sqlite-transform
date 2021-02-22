@@ -23,6 +23,28 @@ Will result in that value being replaced by `2019-10-10T20:10:00`.
 
 Using the `parsedate` subcommand here would result in `2019-10-10` instead.
 
+## jsonsplit
+
+The `jsonsplit` subcommand takes columns that contain a comma-separated list, for example a `tags` column containing records like `"trees,park,dogs"` and converts it into a JSON array `["trees", "park", "dogs"]`.
+
+This is useful for taking advantage of Datasette's [Facet by JSON array](https://docs.datasette.io/en/stable/facets.html#facet-by-json-array) feature.
+
+    $ sqlite-transform jsonsplit my.db mytable tags
+
+It defaults to splitting on commas, but you can specify a different delimiter character using the `--delimiter` option, for example:
+
+    $ sqlite-transform jsonsplit \
+        my.db mytable tags --delimiter ';'
+
+Values within the array will be treated as strings, so a column containing `123,552,775` will be converted into the JSON array `["123", "552", "775"]`.
+
+You can specify a different type for these values using `--type int` or `--type float`, for example:
+
+    $ sqlite-transform jsonsplit \
+        my.db mytable tags --type int
+
+This will result in that column being converted into `[123, 552, 775]`.
+
 ## lambda for executing your own code
 
 The `lambda` subcommand lets you specify Python code which will be executed against the column.

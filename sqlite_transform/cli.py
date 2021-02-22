@@ -1,5 +1,6 @@
 import click
 from dateutil import parser
+import json
 import sqlite3
 import tqdm
 
@@ -40,6 +41,36 @@ def parsedatetime(db_path, table, columns):
     Parse and convert columns to ISO timestamps
     """
     _transform(db_path, table, columns, lambda v: parser.parse(v).isoformat())
+
+
+@cli.command()
+@click.argument(
+    "db_path",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
+    required=True,
+)
+@click.argument("table", type=str)
+@click.argument("columns", type=str, nargs=-1)
+@click.option("--delimiter", default=",", help="Delimiter to split on")
+@click.option(
+    "--type",
+    type=click.Choice(("int", "float")),
+    help="Type to use for values - int or float (defaults to string)",
+)
+def jsonsplit(db_path, table, columns, delimiter, type):
+    """
+    Convert columns into JSON arrays by splitting on a delimiter
+    """
+    value_convert = lambda s: s.strip()
+    if type == "int":
+        value_convert = lambda s: int(s.strip())
+    elif type == "float":
+        value_convert = lambda s: float(s.strip())
+
+    def convert(value):
+        return json.dumps([value_convert(s) for s in value.split(delimiter)])
+
+    _transform(db_path, table, columns, convert)
 
 
 @cli.command(name="lambda")

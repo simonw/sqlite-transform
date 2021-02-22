@@ -12,9 +12,10 @@ import pytest
         "value.replace('October', 'Spooktober')",
     ],
 )
-def test_lambda_single_line(test_db, code):
+def test_lambda_single_line(test_db_and_path, code):
+    db, db_path = test_db_and_path
     result = CliRunner().invoke(
-        cli.cli, ["lambda", test_db, "example", "dt", "--code", code]
+        cli.cli, ["lambda", db_path, "example", "dt", "--code", code]
     )
     assert 0 == result.exit_code, result.output
     assert [
@@ -22,15 +23,16 @@ def test_lambda_single_line(test_db, code):
         {"id": 2, "dt": "6th Spooktober 2019 00:05:06"},
         {"id": 3, "dt": ""},
         {"id": 4, "dt": None},
-    ] == list(sqlite_utils.Database(test_db)["example"].rows)
+    ] == list(db["example"].rows)
 
 
-def test_lambda_multiple_lines(test_db):
+def test_lambda_multiple_lines(test_db_and_path):
+    db, db_path = test_db_and_path
     result = CliRunner().invoke(
         cli.cli,
         [
             "lambda",
-            test_db,
+            db_path,
             "example",
             "dt",
             "--code",
@@ -43,15 +45,16 @@ def test_lambda_multiple_lines(test_db):
         {"id": 2, "dt": "6TH SPOOKTOBER 2019 00:05:06"},
         {"id": 3, "dt": ""},
         {"id": 4, "dt": None},
-    ] == list(sqlite_utils.Database(test_db)["example"].rows)
+    ] == list(db["example"].rows)
 
 
-def test_lambda_import(test_db):
+def test_lambda_import(test_db_and_path):
+    db, db_path = test_db_and_path
     result = CliRunner().invoke(
         cli.cli,
         [
             "lambda",
-            test_db,
+            db_path,
             "example",
             "dt",
             "--code",
@@ -66,4 +69,4 @@ def test_lambda_import(test_db):
         {"id": 2, "dt": "6th OXXober 2019 00:05:06"},
         {"id": 3, "dt": ""},
         {"id": 4, "dt": None},
-    ] == list(sqlite_utils.Database(test_db)["example"].rows)
+    ] == list(db["example"].rows)

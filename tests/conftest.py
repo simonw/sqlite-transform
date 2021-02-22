@@ -4,9 +4,8 @@ import sqlite_utils
 
 
 @pytest.fixture
-def test_db(tmpdir):
-    db_path = str(pathlib.Path(tmpdir) / "data.db")
-    db = sqlite_utils.Database(db_path)
+def test_db_and_path(fresh_db_and_path):
+    db, db_path = fresh_db_and_path
     db["example"].insert_all(
         [
             {"id": 1, "dt": "5th October 2019 12:04"},
@@ -16,4 +15,11 @@ def test_db(tmpdir):
         ],
         pk="id",
     )
-    return db_path
+    return db, db_path
+
+
+@pytest.fixture
+def fresh_db_and_path(tmpdir):
+    db_path = str(pathlib.Path(tmpdir) / "data.db")
+    db = sqlite_utils.Database(db_path)
+    return db, db_path
