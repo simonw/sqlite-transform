@@ -23,6 +23,8 @@ Will result in that value being replaced by `2019-10-10T20:10:00`.
 
 Using the `parsedate` subcommand here would result in `2019-10-10` instead.
 
+In the case of ambiguous dates such as `03/04/05` these commands both default to assuming American-style `mm/dd/yy` format. You can pass `--dayfirst` to specify that the day should be assumed to be first, or `--yearfirst` for the year.
+
 ## jsonsplit
 
 The `jsonsplit` subcommand takes columns that contain a comma-separated list, for example a `tags` column containing records like `"trees,park,dogs"` and converts it into a JSON array `["trees", "park", "dogs"]`.

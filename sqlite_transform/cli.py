@@ -21,11 +21,28 @@ def cli():
 )
 @click.argument("table", type=str)
 @click.argument("columns", type=str, nargs=-1)
-def parsedate(db_path, table, columns):
+@click.option(
+    "--dayfirst",
+    is_flag=True,
+    help="Assume day comes first in ambiguous dates, e.g. 03/04/05",
+)
+@click.option(
+    "--yearfirst",
+    is_flag=True,
+    help="Assume year comes first in ambiguous dates, e.g. 03/04/05",
+)
+def parsedate(db_path, table, columns, dayfirst, yearfirst):
     """
     Parse and convert columns to ISO dates
     """
-    _transform(db_path, table, columns, lambda v: parser.parse(v).date().isoformat())
+    _transform(
+        db_path,
+        table,
+        columns,
+        lambda v: parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst)
+        .date()
+        .isoformat(),
+    )
 
 
 @cli.command()
@@ -36,11 +53,26 @@ def parsedate(db_path, table, columns):
 )
 @click.argument("table", type=str)
 @click.argument("columns", type=str, nargs=-1)
-def parsedatetime(db_path, table, columns):
+@click.option(
+    "--dayfirst",
+    is_flag=True,
+    help="Assume day comes first in ambiguous dates, e.g. 03/04/05",
+)
+@click.option(
+    "--yearfirst",
+    is_flag=True,
+    help="Assume year comes first in ambiguous dates, e.g. 03/04/05",
+)
+def parsedatetime(db_path, table, columns, dayfirst, yearfirst):
     """
     Parse and convert columns to ISO timestamps
     """
-    _transform(db_path, table, columns, lambda v: parser.parse(v).isoformat())
+    _transform(
+        db_path,
+        table,
+        columns,
+        lambda v: parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst).isoformat(),
+    )
 
 
 @cli.command()

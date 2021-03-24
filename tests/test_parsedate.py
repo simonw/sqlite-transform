@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 from sqlite_transform import cli
-import sqlite_utils
+import pytest
 
 
 def test_parsedate(test_db_and_path):
@@ -25,3 +25,27 @@ def test_parsedatetime(test_db_and_path):
         {"id": 3, "dt": ""},
         {"id": 4, "dt": None},
     ] == list(db["example"].rows)
+
+
+@pytest.mark.parametrize(
+    "command,options,expected",
+    (
+        ("parsedate", [], "2005-03-04"),
+        ("parsedate", ["--dayfirst"], "2005-04-03"),
+        ("parsedatetime", [], "2005-03-04T00:00:00"),
+        ("parsedatetime", ["--dayfirst"], "2005-04-03T00:00:00"),
+    ),
+)
+def test_dayfirst_yearfirst(fresh_db_and_path, command, options, expected):
+    db, db_path = fresh_db_and_path
+    db["example"].insert_all(
+        [
+            {"id": 1, "dt": "03/04/05"},
+        ],
+        pk="id",
+    )
+    result = CliRunner().invoke(cli.cli, [command, db_path, "example", "dt"] + options)
+    assert result.exit_code == 0
+    assert list(db["example"].rows) == [
+        {"id": 1, "dt": expected},
+    ]
