@@ -9,7 +9,7 @@ Tool for running transformations on columns in a SQLite database.
 
 ## How to install
 
-    $ pip install sqlite-transform
+    pip install sqlite-transform
 
 ## parsedate and parsedatetime
 
@@ -17,7 +17,7 @@ These subcommands will run all values in the specified column through `dateutils
 
 For example, if a row in the database has an `opened` column which contains `10/10/2019 08:10:00 PM`, running the following command:
 
-    $ sqlite-transform parsedatetime my.db mytable opened
+    sqlite-transform parsedatetime my.db mytable opened
 
 Will result in that value being replaced by `2019-10-10T20:10:00`.
 
@@ -31,18 +31,18 @@ The `jsonsplit` subcommand takes columns that contain a comma-separated list, fo
 
 This is useful for taking advantage of Datasette's [Facet by JSON array](https://docs.datasette.io/en/stable/facets.html#facet-by-json-array) feature.
 
-    $ sqlite-transform jsonsplit my.db mytable tags
+    sqlite-transform jsonsplit my.db mytable tags
 
 It defaults to splitting on commas, but you can specify a different delimiter character using the `--delimiter` option, for example:
 
-    $ sqlite-transform jsonsplit \
+    sqlite-transform jsonsplit \
         my.db mytable tags --delimiter ';'
 
 Values within the array will be treated as strings, so a column containing `123,552,775` will be converted into the JSON array `["123", "552", "775"]`.
 
 You can specify a different type for these values using `--type int` or `--type float`, for example:
 
-    $ sqlite-transform jsonsplit \
+    sqlite-transform jsonsplit \
         my.db mytable tags --type int
 
 This will result in that column being converted into `[123, 552, 775]`.
@@ -53,20 +53,36 @@ The `lambda` subcommand lets you specify Python code which will be executed agai
 
 Here's how to convert a column to uppercase:
 
-    $ sqlite-transform lambda my.db mytable mycolumn --code='str(value).upper()'
+    sqlite-transform lambda my.db mytable mycolumn --code='str(value).upper()'
 
 The code you provide will be compiled into a function that takes `value` as a single argument. You can break your function body into multiple lines, provided the last line is a `return` statement:
 
-    $ sqlite-transform lambda my.db mytable mycolumn --code='value = str(value)
+    sqlite-transform lambda my.db mytable mycolumn --code='value = str(value)
     return value.upper()'
 
 You can also specify Python modules that should be imported and made available to your code using one or more `--import` options:
 
-    $ sqlite-transform lambda my.db mytable mycolumn \
+    sqlite-transform lambda my.db mytable mycolumn \
         --code='"\n".join(textwrap.wrap(value, 10))' \
         --import=textwrap
 
 The `--dry-run` option will output a preview of the transformation against the first ten rows, without modifying the database.
+
+## Saving the result to a separate column
+
+Each of these commands accepts optional `--output` and `--output-type` options. These can be used to save the result of the transformation to a separate column, which will be created if the column does not already exist.
+
+To save the result of `jsonsplit` to a new column called `json_tags`, use the following:
+
+    sqlite-transform jsonsplit my.db mytable tags \
+      --output json_tags
+
+The type of the created column defaults to `text`, but a different column type can be specified using `--output-type`. This example will create a new floating point column called `float_id` with a copy of each item's ID increased by 0.5:
+
+    sqlite-transform lambda my.db mytable id \
+      --code 'float(value) + 0.5' \
+      --output float_id \
+      --output-type float
 
 ### Terminology warning
 

@@ -50,3 +50,21 @@ def test_jsonsplit_type(fresh_db_and_path, type, expected_array):
     result = CliRunner().invoke(cli.cli, args)
     assert 0 == result.exit_code, result.output
     assert json.loads(db["example"].get(1)["records"]) == expected_array
+
+
+def test_jsonsplit_output(fresh_db_and_path):
+    db, db_path = fresh_db_and_path
+    db["example"].insert_all(
+        [
+            {"id": 1, "records": "1,2,3"},
+        ],
+        pk="id",
+    )
+    args = ["jsonsplit", db_path, "example", "records", "--output", "tags"]
+    result = CliRunner().invoke(cli.cli, args)
+    assert 0 == result.exit_code, result.output
+    assert db["example"].get(1) == {
+        "id": 1,
+        "records": "1,2,3",
+        "tags": '["1", "2", "3"]',
+    }

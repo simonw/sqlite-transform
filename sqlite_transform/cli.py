@@ -2,9 +2,23 @@ import click
 from dateutil import parser
 import json
 import sqlite3
+import sqlite_utils
 import tqdm
 
 sqlite3.enable_callback_tracebacks(True)
+
+
+def output_options(fn):
+    click.option(
+        "--output-type",
+        help="Column type to use for the output column",
+        default="text",
+        type=click.Choice(["integer", "float", "blob", "text"]),
+    )(fn)
+    click.option(
+        "--output", help="Optional separate column to populate with the output"
+    )(fn)
+    return fn
 
 
 @click.group()
@@ -31,7 +45,8 @@ def cli():
     is_flag=True,
     help="Assume year comes first in ambiguous dates, e.g. 03/04/05",
 )
-def parsedate(db_path, table, columns, dayfirst, yearfirst):
+@output_options
+def parsedate(db_path, table, columns, dayfirst, yearfirst, output, output_type):
     """
     Parse and convert columns to ISO dates
     """
@@ -42,6 +57,8 @@ def parsedate(db_path, table, columns, dayfirst, yearfirst):
         lambda v: parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst)
         .date()
         .isoformat(),
+        output,
+        output_type,
     )
 
 
@@ -63,7 +80,8 @@ def parsedate(db_path, table, columns, dayfirst, yearfirst):
     is_flag=True,
     help="Assume year comes first in ambiguous dates, e.g. 03/04/05",
 )
-def parsedatetime(db_path, table, columns, dayfirst, yearfirst):
+@output_options
+def parsedatetime(db_path, table, columns, dayfirst, yearfirst, output, output_type):
     """
     Parse and convert columns to ISO timestamps
     """
@@ -72,6 +90,8 @@ def parsedatetime(db_path, table, columns, dayfirst, yearfirst):
         table,
         columns,
         lambda v: parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst).isoformat(),
+        output,
+        output_type,
     )
 
 
@@ -89,7 +109,8 @@ def parsedatetime(db_path, table, columns, dayfirst, yearfirst):
     type=click.Choice(("int", "float")),
     help="Type to use for values - int or float (defaults to string)",
 )
-def jsonsplit(db_path, table, columns, delimiter, type):
+@output_options
+def jsonsplit(db_path, table, columns, delimiter, type, output, output_type):
     """
     Convert columns into JSON arrays by splitting on a delimiter
     """
@@ -102,7 +123,7 @@ def jsonsplit(db_path, table, columns, delimiter, type):
     def convert(value):
         return json.dumps([value_convert(s) for s in value.split(delimiter)])
 
-    _transform(db_path, table, columns, convert)
+    _transform(db_path, table, columns, convert, output, output_type)
 
 
 @cli.command(name="lambda")
@@ -122,7 +143,8 @@ def jsonsplit(db_path, table, columns, delimiter, type):
 @click.option(
     "--dry-run", is_flag=True, help="Show results of running this against first 10 rows"
 )
-def lambda_(db_path, table, columns, code, imports, dry_run):
+@output_options
+def lambda_(db_path, table, columns, code, imports, dry_run, output, output_type):
     """
     Transform columns using Python code you supply. For example:
 
@@ -133,6 +155,8 @@ def lambda_(db_path, table, columns, code, imports, dry_run):
 
     "value" is a variable with the column value to be transformed.
     """
+    if output is not None and len(columns) > 1:
+        raise click.ClickException("Cannot use --output with more than one column")
     # If single line and no 'return', add the return
     if "\n" not in code and not code.strip().startswith("return "):
         code = "return {}".format(code)
@@ -165,13 +189,18 @@ def lambda_(db_path, table, columns, code, imports, dry_run):
             print(row[1])
             print()
     else:
-        _transform(db_path, table, columns, fn)
+        _transform(db_path, table, columns, fn, output, output_type)
 
 
-def _transform(db_path, table, columns, fn):
+def _transform(db_path, table, columns, fn, output=None, output_type=None):
     db = sqlite3.connect(db_path)
     count_sql = "select count(*) from [{}]".format(table)
     todo_count = list(db.execute(count_sql).fetchall())[0][0] * len(columns)
+
+    if output is not None:
+        sqlite_utils_db = sqlite_utils.Database(db)
+        if output not in sqlite_utils_db[table].columns_dict:
+            sqlite_utils_db[table].add_column(output, output_type or "text")
 
     with tqdm.tqdm(total=todo_count) as bar:
 
@@ -186,7 +215,9 @@ def _transform(db_path, table, columns, fn):
             table=table,
             sets=", ".join(
                 [
-                    "[{column}] = transform([{column}])".format(column=column)
+                    "[{output_column}] = transform([{column}])".format(
+                        output_column=output or column, column=column
+                    )
                     for column in columns
                 ]
             ),
