@@ -84,6 +84,10 @@ The type of the created column defaults to `text`, but a different column type c
       --output float_id \
       --output-type float
 
+## Disabling the progress bar
+
+By default each command will show a progress bar. Pass `-s` or `--silent` to hide that progress bar.
+
 ### Terminology warning
 
 This tool uses the word "transform" to mean something different from the [sqlite-utils transform](https://sqlite-utils.datasette.io/en/stable/cli.html#transforming-tables) command.

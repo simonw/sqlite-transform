@@ -8,7 +8,8 @@ import tqdm
 sqlite3.enable_callback_tracebacks(True)
 
 
-def output_options(fn):
+def common_options(fn):
+    click.option("-s", "--silent", is_flag=True, help="Don't show a progress bar")(fn)
     click.option(
         "--output-type",
         help="Column type to use for the output column",
@@ -45,8 +46,10 @@ def cli():
     is_flag=True,
     help="Assume year comes first in ambiguous dates, e.g. 03/04/05",
 )
-@output_options
-def parsedate(db_path, table, columns, dayfirst, yearfirst, output, output_type):
+@common_options
+def parsedate(
+    db_path, table, columns, dayfirst, yearfirst, output, output_type, silent
+):
     """
     Parse and convert columns to ISO dates
     """
@@ -59,6 +62,7 @@ def parsedate(db_path, table, columns, dayfirst, yearfirst, output, output_type)
         .isoformat(),
         output,
         output_type,
+        silent,
     )
 
 
@@ -80,8 +84,10 @@ def parsedate(db_path, table, columns, dayfirst, yearfirst, output, output_type)
     is_flag=True,
     help="Assume year comes first in ambiguous dates, e.g. 03/04/05",
 )
-@output_options
-def parsedatetime(db_path, table, columns, dayfirst, yearfirst, output, output_type):
+@common_options
+def parsedatetime(
+    db_path, table, columns, dayfirst, yearfirst, output, output_type, silent
+):
     """
     Parse and convert columns to ISO timestamps
     """
@@ -92,6 +98,7 @@ def parsedatetime(db_path, table, columns, dayfirst, yearfirst, output, output_t
         lambda v: parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst).isoformat(),
         output,
         output_type,
+        silent,
     )
 
 
@@ -109,8 +116,8 @@ def parsedatetime(db_path, table, columns, dayfirst, yearfirst, output, output_t
     type=click.Choice(("int", "float")),
     help="Type to use for values - int or float (defaults to string)",
 )
-@output_options
-def jsonsplit(db_path, table, columns, delimiter, type, output, output_type):
+@common_options
+def jsonsplit(db_path, table, columns, delimiter, type, output, output_type, silent):
     """
     Convert columns into JSON arrays by splitting on a delimiter
     """
@@ -123,7 +130,7 @@ def jsonsplit(db_path, table, columns, delimiter, type, output, output_type):
     def convert(value):
         return json.dumps([value_convert(s) for s in value.split(delimiter)])
 
-    _transform(db_path, table, columns, convert, output, output_type)
+    _transform(db_path, table, columns, convert, output, output_type, silent)
 
 
 @cli.command(name="lambda")
@@ -143,8 +150,10 @@ def jsonsplit(db_path, table, columns, delimiter, type, output, output_type):
 @click.option(
     "--dry-run", is_flag=True, help="Show results of running this against first 10 rows"
 )
-@output_options
-def lambda_(db_path, table, columns, code, imports, dry_run, output, output_type):
+@common_options
+def lambda_(
+    db_path, table, columns, code, imports, dry_run, output, output_type, silent
+):
     """
     Transform columns using Python code you supply. For example:
 
@@ -189,10 +198,12 @@ def lambda_(db_path, table, columns, code, imports, dry_run, output, output_type
             print(row[1])
             print()
     else:
-        _transform(db_path, table, columns, fn, output, output_type)
+        _transform(db_path, table, columns, fn, output, output_type, silent)
 
 
-def _transform(db_path, table, columns, fn, output=None, output_type=None):
+def _transform(
+    db_path, table, columns, fn, output=None, output_type=None, silent=False
+):
     db = sqlite3.connect(db_path)
     count_sql = "select count(*) from [{}]".format(table)
     todo_count = list(db.execute(count_sql).fetchall())[0][0] * len(columns)
@@ -202,7 +213,7 @@ def _transform(db_path, table, columns, fn, output=None, output_type=None):
         if output not in sqlite_utils_db[table].columns_dict:
             sqlite_utils_db[table].add_column(output, output_type or "text")
 
-    with tqdm.tqdm(total=todo_count) as bar:
+    with tqdm.tqdm(total=todo_count, disable=silent) as bar:
 
         def _transform_value(v):
             bar.update(1)
