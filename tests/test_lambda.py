@@ -202,7 +202,7 @@ def test_lambda_output_column_output_type(test_db_and_path, output_type, expecte
                 "--output-type",
                 "invalid",
             ],
-            "Error: Invalid value for '--output-type': invalid choice: ",
+            "Error: Invalid value for '--output-type'",
         ),
     ],
 )
