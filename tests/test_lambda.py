@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 from sqlite_transform import cli
-import sqlite_utils
+import textwrap
 import pytest
 
 
@@ -219,3 +219,82 @@ def test_lambda_output_error(test_db_and_path, options, expected_error):
     )
     assert result.exit_code != 0
     assert expected_error in result.output
+
+
+def test_lambda_multi(fresh_db_and_path):
+    db, db_path = fresh_db_and_path
+    db["creatures"].insert_all(
+        [
+            {"id": 1, "name": "Simon"},
+            {"id": 2, "name": "Cleo"},
+        ],
+        pk="id",
+    )
+    result = CliRunner().invoke(
+        cli.cli,
+        [
+            "lambda",
+            db_path,
+            "creatures",
+            "name",
+            "--multi",
+            "--code",
+            '{"upper": value.upper(), "lower": value.lower()}',
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert list(db["creatures"].rows) == [
+        {"id": 1, "name": "Simon", "upper": "SIMON", "lower": "simon"},
+        {"id": 2, "name": "Cleo", "upper": "CLEO", "lower": "cleo"},
+    ]
+
+
+def test_lambda_multi_complex_column_types(fresh_db_and_path):
+    db, db_path = fresh_db_and_path
+    db["rows"].insert_all(
+        [
+            {"id": 1},
+            {"id": 2},
+            {"id": 3},
+        ],
+        pk="id",
+    )
+    code = textwrap.dedent(
+        """
+    if value == 1:
+        return {"is_str": "", "is_float": 1.2, "is_int": None}
+    elif value == 2:
+        return {"is_float": 1, "is_int": 12}
+    elif value == 3:
+        return {"is_bytes": b"blah"}
+    """
+    )
+    result = CliRunner().invoke(
+        cli.cli,
+        [
+            "lambda",
+            db_path,
+            "rows",
+            "id",
+            "--multi",
+            "--code",
+            code,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert list(db["rows"].rows) == [
+        {"id": 1, "is_str": "", "is_float": 1.2, "is_int": None, "is_bytes": None},
+        {"id": 2, "is_str": None, "is_float": 1.0, "is_int": 12, "is_bytes": None},
+        {
+            "id": 3,
+            "is_str": None,
+            "is_float": None,
+            "is_int": None,
+            "is_bytes": b"blah",
+        },
+    ]
+    assert db["rows"].schema == (
+        "CREATE TABLE [rows] (\n"
+        "   [id] INTEGER PRIMARY KEY\n"
+        ", [is_str] TEXT, [is_float] FLOAT, [is_int] INTEGER, [is_bytes] BLOB)"
+    )

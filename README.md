@@ -84,6 +84,30 @@ The type of the created column defaults to `text`, but a different column type c
       --output float_id \
       --output-type float
 
+## Splitting a column into multiple columns
+
+Sometimes you may wish to convert a single column into multiple derived columns. For example, you may have a `location` column containing `latitude,longitude` values which you wish to split out into separate `latitude` and `longitude` columns.
+
+You can achieve this using the `--multi` option to `sqlite-transform lambda`. This option expects your `--code` function to return a Python dictionary: new columns well be created and populated for each of the keys in that dictionary.
+
+For the `latitude,longitude` example you would use the following:
+
+    sqlite-transform lambda demo.db places location \
+      --code 'return {
+        "latitude": float(value.split(",")[0]),
+        "longitude": float(value.split(",")[1]),
+      }' --multi
+
+The type of the returned values will be taken into account when creating the new columns. In this example, the resulting database schema will look like this:
+
+```sql
+CREATE TABLE [places] (
+    [location] TEXT,
+    [latitude] FLOAT,
+    [longitude] FLOAT
+);
+```
+
 ## Disabling the progress bar
 
 By default each command will show a progress bar. Pass `-s` or `--silent` to hide that progress bar.

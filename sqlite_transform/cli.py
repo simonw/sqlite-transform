@@ -150,9 +150,12 @@ def jsonsplit(db_path, table, columns, delimiter, type, output, output_type, sil
 @click.option(
     "--dry-run", is_flag=True, help="Show results of running this against first 10 rows"
 )
+@click.option(
+    "--multi", is_flag=True, help="Populate columns for keys in returned dictionary"
+)
 @common_options
 def lambda_(
-    db_path, table, columns, code, imports, dry_run, output, output_type, silent
+    db_path, table, columns, code, imports, dry_run, multi, output, output_type, silent
 ):
     """
     Transform columns using Python code you supply. For example:
@@ -166,6 +169,8 @@ def lambda_(
     """
     if output is not None and len(columns) > 1:
         raise click.ClickException("Cannot use --output with more than one column")
+    if multi and len(columns) > 1:
+        raise click.ClickException("Cannot use --multi with more than one column")
     # If single line and no 'return', add the return
     if "\n" not in code and not code.strip().startswith("return "):
         code = "return {}".format(code)
@@ -197,13 +202,13 @@ def lambda_(
             print(" --- becomes:")
             print(row[1])
             print()
+    elif multi:
+        _transform_multi(db_path, table, columns[0], fn, silent)
     else:
         _transform(db_path, table, columns, fn, output, output_type, silent)
 
 
-def _transform(
-    db_path, table, columns, fn, output=None, output_type=None, silent=False
-):
+def _transform(db_path, table, columns, fn, output, output_type, silent):
     db = sqlite3.connect(db_path)
     count_sql = "select count(*) from [{}]".format(table)
     todo_count = list(db.execute(count_sql).fetchall())[0][0] * len(columns)
@@ -235,3 +240,73 @@ def _transform(
         )
         with db:
             db.execute(sql)
+
+
+def _transform_multi(db_path, table, column, fn, silent):
+    db = sqlite_utils.Database(db_path)
+    # First we execute the function
+    pk_to_values = {}
+    new_column_types = {}
+    pks = [column.name for column in db[table].columns if column.is_pk]
+    if not pks:
+        pks = ["rowid"]
+    with tqdm.tqdm(total=db[table].count, disable=silent, desc="1: Evaluating") as bar:
+        for row in db[table].rows_where(
+            select=", ".join(
+                "[{}]".format(column_name) for column_name in (pks + [column])
+            )
+        ):
+            row_pk = tuple(row[pk] for pk in pks)
+            if len(row_pk) == 1:
+                row_pk = row_pk[0]
+            values = fn(row[column])
+            if not isinstance(values, dict):
+                raise click.ClickException(
+                    "With --multi code must return a Python dictionary - returned {}".format(
+                        repr(values)
+                    )
+                )
+            for key, value in values.items():
+                new_column_types.setdefault(key, set()).add(type(value))
+            pk_to_values[row_pk] = values
+            bar.update(1)
+
+    # Add any new columns
+    columns_to_create = _suggest_column_types(new_column_types)
+    for column_name, column_type in columns_to_create.items():
+        if column_name not in db[table].columns_dict:
+            db[table].add_column(column_name, column_type)
+
+    # Run the updates
+    with tqdm.tqdm(total=db[table].count, disable=silent, desc="2: Updating") as bar:
+        with db.conn:
+            for pk, updates in pk_to_values.items():
+                db[table].update(pk, updates)
+                bar.update(1)
+
+
+def _suggest_column_types(all_column_types):
+    column_types = {}
+    for key, types in all_column_types.items():
+        # Ignore null values if at least one other type present:
+        if len(types) > 1:
+            types.discard(None.__class__)
+        if {None.__class__} == types:
+            t = str
+        elif len(types) == 1:
+            t = list(types)[0]
+            # But if it's a subclass of list / tuple / dict, use str
+            # instead as we will be storing it as JSON in the table
+            for superclass in (list, tuple, dict):
+                if issubclass(t, superclass):
+                    t = str
+        elif {int, bool}.issuperset(types):
+            t = int
+        elif {int, float, bool}.issuperset(types):
+            t = float
+        elif {bytes, str}.issuperset(types):
+            t = bytes
+        else:
+            t = str
+        column_types[key] = t
+    return column_types
