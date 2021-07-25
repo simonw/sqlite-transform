@@ -10,6 +10,7 @@ sqlite3.enable_callback_tracebacks(True)
 
 def common_options(fn):
     click.option("-s", "--silent", is_flag=True, help="Don't show a progress bar")(fn)
+    click.option("--drop", is_flag=True, help="Drop original column afterwards")(fn)
     click.option(
         "--output-type",
         help="Column type to use for the output column",
@@ -48,7 +49,7 @@ def cli():
 )
 @common_options
 def parsedate(
-    db_path, table, columns, dayfirst, yearfirst, output, output_type, silent
+    db_path, table, columns, dayfirst, yearfirst, output, output_type, drop, silent
 ):
     """
     Parse and convert columns to ISO dates
@@ -62,6 +63,7 @@ def parsedate(
         .isoformat(),
         output,
         output_type,
+        drop,
         silent,
     )
 
@@ -86,7 +88,7 @@ def parsedate(
 )
 @common_options
 def parsedatetime(
-    db_path, table, columns, dayfirst, yearfirst, output, output_type, silent
+    db_path, table, columns, dayfirst, yearfirst, output, output_type, drop, silent
 ):
     """
     Parse and convert columns to ISO timestamps
@@ -98,6 +100,7 @@ def parsedatetime(
         lambda v: parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst).isoformat(),
         output,
         output_type,
+        drop,
         silent,
     )
 
@@ -117,7 +120,9 @@ def parsedatetime(
     help="Type to use for values - int or float (defaults to string)",
 )
 @common_options
-def jsonsplit(db_path, table, columns, delimiter, type, output, output_type, silent):
+def jsonsplit(
+    db_path, table, columns, delimiter, type, output, output_type, drop, silent
+):
     """
     Convert columns into JSON arrays by splitting on a delimiter
     """
@@ -130,7 +135,7 @@ def jsonsplit(db_path, table, columns, delimiter, type, output, output_type, sil
     def convert(value):
         return json.dumps([value_convert(s) for s in value.split(delimiter)])
 
-    _transform(db_path, table, columns, convert, output, output_type, silent)
+    _transform(db_path, table, columns, convert, output, output_type, drop, silent)
 
 
 @cli.command(name="lambda")
@@ -155,7 +160,17 @@ def jsonsplit(db_path, table, columns, delimiter, type, output, output_type, sil
 )
 @common_options
 def lambda_(
-    db_path, table, columns, code, imports, dry_run, multi, output, output_type, silent
+    db_path,
+    table,
+    columns,
+    code,
+    imports,
+    dry_run,
+    multi,
+    output,
+    output_type,
+    drop,
+    silent,
 ):
     """
     Transform columns using Python code you supply. For example:
@@ -203,46 +218,50 @@ def lambda_(
             print(row[1])
             print()
     elif multi:
-        _transform_multi(db_path, table, columns[0], fn, silent)
+        _transform_multi(db_path, table, columns[0], fn, drop, silent)
     else:
-        _transform(db_path, table, columns, fn, output, output_type, silent)
+        _transform(db_path, table, columns, fn, output, output_type, drop, silent)
 
 
-def _transform(db_path, table, columns, fn, output, output_type, silent):
-    db = sqlite3.connect(db_path)
+def _transform(db_path, table, columns, fn, output, output_type, drop, silent):
+    db = sqlite_utils.Database(db_path)
     count_sql = "select count(*) from [{}]".format(table)
     todo_count = list(db.execute(count_sql).fetchall())[0][0] * len(columns)
 
+    if drop and not output:
+        raise click.ClickException("--drop can only be used with --output or --multi")
+
     if output is not None:
-        sqlite_utils_db = sqlite_utils.Database(db)
-        if output not in sqlite_utils_db[table].columns_dict:
-            sqlite_utils_db[table].add_column(output, output_type or "text")
+        if output not in db[table].columns_dict:
+            db[table].add_column(output, output_type or "text")
 
     with tqdm.tqdm(total=todo_count, disable=silent) as bar:
 
-        def _transform_value(v):
+        def transform_value(v):
             bar.update(1)
             if not v:
                 return v
             return fn(v)
 
-        db.create_function("transform", 1, _transform_value)
+        db.register_function(transform_value)
         sql = "update [{table}] set {sets};".format(
             table=table,
             sets=", ".join(
                 [
-                    "[{output_column}] = transform([{column}])".format(
+                    "[{output_column}] = transform_value([{column}])".format(
                         output_column=output or column, column=column
                     )
                     for column in columns
                 ]
             ),
         )
-        with db:
+        with db.conn:
             db.execute(sql)
+            if drop:
+                db[table].transform(drop=columns)
 
 
-def _transform_multi(db_path, table, column, fn, silent):
+def _transform_multi(db_path, table, column, fn, drop, silent):
     db = sqlite_utils.Database(db_path)
     # First we execute the function
     pk_to_values = {}
@@ -284,6 +303,8 @@ def _transform_multi(db_path, table, column, fn, silent):
             for pk, updates in pk_to_values.items():
                 db[table].update(pk, updates)
                 bar.update(1)
+            if drop:
+                db[table].transform(drop=(column,))
 
 
 def _suggest_column_types(all_column_types):

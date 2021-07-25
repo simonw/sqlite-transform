@@ -52,7 +52,8 @@ def test_jsonsplit_type(fresh_db_and_path, type, expected_array):
     assert json.loads(db["example"].get(1)["records"]) == expected_array
 
 
-def test_jsonsplit_output(fresh_db_and_path):
+@pytest.mark.parametrize("drop", (True, False))
+def test_jsonsplit_output(fresh_db_and_path, drop):
     db, db_path = fresh_db_and_path
     db["example"].insert_all(
         [
@@ -61,10 +62,15 @@ def test_jsonsplit_output(fresh_db_and_path):
         pk="id",
     )
     args = ["jsonsplit", db_path, "example", "records", "--output", "tags"]
+    if drop:
+        args += ["--drop"]
     result = CliRunner().invoke(cli.cli, args)
     assert 0 == result.exit_code, result.output
-    assert db["example"].get(1) == {
+    expected = {
         "id": 1,
         "records": "1,2,3",
         "tags": '["1", "2", "3"]',
     }
+    if drop:
+        del expected["records"]
+    assert db["example"].get(1) == expected

@@ -35,6 +35,14 @@ def test_column_required(test_db_and_path, command):
     assert "Error: Missing argument 'COLUMNS...'" in result.output
 
 
+@pytest.mark.parametrize("command", ("parsedate", "parsedatetime", "jsonsplit"))
+def test_cannot_use_drop_without_multi_or_output(test_db_and_path, command):
+    _, db_path = test_db_and_path
+    result = CliRunner().invoke(cli.cli, [command, db_path, "example", "id", "--drop"])
+    assert result.exit_code == 1, result.output
+    assert "Error: --drop can only be used with --output or --multi" in result.output
+
+
 @pytest.mark.parametrize(
     "command,options,expected",
     (
@@ -70,4 +78,19 @@ def test_parsedatetime_output(test_db_and_path):
         {"id": 2, "dt": "6th October 2019 00:05:06", "parsed": "2019-10-06T00:05:06"},
         {"id": 3, "dt": "", "parsed": ""},
         {"id": 4, "dt": None, "parsed": None},
+    ]
+
+
+def test_parsedatetime_output_drop(test_db_and_path):
+    db, db_path = test_db_and_path
+    result = CliRunner().invoke(
+        cli.cli,
+        ["parsedatetime", db_path, "example", "dt", "--output", "parsed", "--drop"],
+    )
+    assert result.exit_code == 0, result.output
+    assert list(db["example"].rows) == [
+        {"id": 1, "parsed": "2019-10-05T12:04:00"},
+        {"id": 2, "parsed": "2019-10-06T00:05:06"},
+        {"id": 3, "parsed": ""},
+        {"id": 4, "parsed": None},
     ]

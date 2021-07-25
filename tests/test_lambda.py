@@ -115,23 +115,24 @@ def test_lambda_dryrun(test_db_and_path):
     ]
 
 
-def test_lambda_output_column(test_db_and_path):
+@pytest.mark.parametrize("drop", (True, False))
+def test_lambda_output_column(test_db_and_path, drop):
     db, db_path = test_db_and_path
-    result = CliRunner().invoke(
-        cli.cli,
-        [
-            "lambda",
-            db_path,
-            "example",
-            "dt",
-            "--code",
-            "value.replace('October', 'Spooktober')",
-            "--output",
-            "newcol",
-        ],
-    )
+    args = [
+        "lambda",
+        db_path,
+        "example",
+        "dt",
+        "--code",
+        "value.replace('October', 'Spooktober')",
+        "--output",
+        "newcol",
+    ]
+    if drop:
+        args += ["--drop"]
+    result = CliRunner().invoke(cli.cli, args)
     assert 0 == result.exit_code, result.output
-    assert [
+    expected = [
         {
             "id": 1,
             "dt": "5th October 2019 12:04",
@@ -144,7 +145,11 @@ def test_lambda_output_column(test_db_and_path):
         },
         {"id": 3, "dt": "", "newcol": ""},
         {"id": 4, "dt": None, "newcol": None},
-    ] == list(db["example"].rows)
+    ]
+    if drop:
+        for row in expected:
+            del row["dt"]
+    assert list(db["example"].rows) == expected
 
 
 @pytest.mark.parametrize(
@@ -228,7 +233,8 @@ def test_lambda_output_error(test_db_and_path, options, expected_error):
     assert expected_error in result.output
 
 
-def test_lambda_multi(fresh_db_and_path):
+@pytest.mark.parametrize("drop", (True, False))
+def test_lambda_multi(fresh_db_and_path, drop):
     db, db_path = fresh_db_and_path
     db["creatures"].insert_all(
         [
@@ -237,23 +243,27 @@ def test_lambda_multi(fresh_db_and_path):
         ],
         pk="id",
     )
-    result = CliRunner().invoke(
-        cli.cli,
-        [
-            "lambda",
-            db_path,
-            "creatures",
-            "name",
-            "--multi",
-            "--code",
-            '{"upper": value.upper(), "lower": value.lower()}',
-        ],
-    )
+    args = [
+        "lambda",
+        db_path,
+        "creatures",
+        "name",
+        "--multi",
+        "--code",
+        '{"upper": value.upper(), "lower": value.lower()}',
+    ]
+    if drop:
+        args += ["--drop"]
+    result = CliRunner().invoke(cli.cli, args)
     assert result.exit_code == 0, result.output
-    assert list(db["creatures"].rows) == [
+    expected = [
         {"id": 1, "name": "Simon", "upper": "SIMON", "lower": "simon"},
         {"id": 2, "name": "Cleo", "upper": "CLEO", "lower": "cleo"},
     ]
+    if drop:
+        for row in expected:
+            del row["name"]
+    assert list(db["creatures"].rows) == expected
 
 
 def test_lambda_multi_complex_column_types(fresh_db_and_path):

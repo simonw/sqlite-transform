@@ -84,6 +84,8 @@ The type of the created column defaults to `text`, but a different column type c
       --output float_id \
       --output-type float
 
+You can drop the original column at the end of the operation by adding `--drop`.
+
 ## Splitting a column into multiple columns
 
 Sometimes you may wish to convert a single column into multiple derived columns. For example, you may have a `location` column containing `latitude,longitude` values which you wish to split out into separate `latitude` and `longitude` columns.
@@ -108,6 +110,8 @@ CREATE TABLE [places] (
 );
 ```
 The code function can also return `None`, in which case its output will be ignored.
+
+You can drop the original column at the end of the operation by adding `--drop`.
 
 ## Disabling the progress bar
 
