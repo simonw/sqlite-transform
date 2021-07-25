@@ -256,6 +256,7 @@ def test_lambda_multi_complex_column_types(fresh_db_and_path):
             {"id": 1},
             {"id": 2},
             {"id": 3},
+            {"id": 4},
         ],
         pk="id",
     )
@@ -292,6 +293,7 @@ def test_lambda_multi_complex_column_types(fresh_db_and_path):
             "is_int": None,
             "is_bytes": b"blah",
         },
+        {"id": 4, "is_str": None, "is_float": None, "is_int": None, "is_bytes": None},
     ]
     assert db["rows"].schema == (
         "CREATE TABLE [rows] (\n"

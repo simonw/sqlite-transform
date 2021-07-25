@@ -107,6 +107,7 @@ CREATE TABLE [places] (
     [longitude] FLOAT
 );
 ```
+The code function can also return `None`, in which case its output will be ignored.
 
 ## Disabling the progress bar
 

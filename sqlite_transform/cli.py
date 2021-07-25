@@ -260,15 +260,16 @@ def _transform_multi(db_path, table, column, fn, silent):
             if len(row_pk) == 1:
                 row_pk = row_pk[0]
             values = fn(row[column])
-            if not isinstance(values, dict):
+            if values is not None and not isinstance(values, dict):
                 raise click.ClickException(
                     "With --multi code must return a Python dictionary - returned {}".format(
                         repr(values)
                     )
                 )
-            for key, value in values.items():
-                new_column_types.setdefault(key, set()).add(type(value))
-            pk_to_values[row_pk] = values
+            if values:
+                for key, value in values.items():
+                    new_column_types.setdefault(key, set()).add(type(value))
+                pk_to_values[row_pk] = values
             bar.update(1)
 
     # Add any new columns
