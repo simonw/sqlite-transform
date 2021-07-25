@@ -204,6 +204,13 @@ def test_lambda_output_column_output_type(test_db_and_path, output_type, expecte
             ],
             "Error: Invalid value for '--output-type'",
         ),
+        (
+            [
+                "--code",
+                "value.replace('October', 'Spooktober')",
+            ],
+            "Missing argument 'COLUMNS...'",
+        ),
     ],
 )
 def test_lambda_output_error(test_db_and_path, options, expected_error):

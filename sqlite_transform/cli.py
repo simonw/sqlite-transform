@@ -35,7 +35,7 @@ def cli():
     required=True,
 )
 @click.argument("table", type=str)
-@click.argument("columns", type=str, nargs=-1)
+@click.argument("columns", type=str, nargs=-1, required=True)
 @click.option(
     "--dayfirst",
     is_flag=True,
@@ -73,7 +73,7 @@ def parsedate(
     required=True,
 )
 @click.argument("table", type=str)
-@click.argument("columns", type=str, nargs=-1)
+@click.argument("columns", type=str, nargs=-1, required=True)
 @click.option(
     "--dayfirst",
     is_flag=True,
@@ -109,7 +109,7 @@ def parsedatetime(
     required=True,
 )
 @click.argument("table", type=str)
-@click.argument("columns", type=str, nargs=-1)
+@click.argument("columns", type=str, nargs=-1, required=True)
 @click.option("--delimiter", default=",", help="Delimiter to split on")
 @click.option(
     "--type",
@@ -140,7 +140,7 @@ def jsonsplit(db_path, table, columns, delimiter, type, output, output_type, sil
     required=True,
 )
 @click.argument("table", type=str)
-@click.argument("columns", type=str, nargs=-1)
+@click.argument("columns", type=str, nargs=-1, required=True)
 @click.option(
     "--code", type=str, required=True, help="Python code to transform 'value'"
 )

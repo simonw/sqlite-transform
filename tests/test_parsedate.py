@@ -27,6 +27,14 @@ def test_parsedatetime(test_db_and_path):
     ] == list(db["example"].rows)
 
 
+@pytest.mark.parametrize("command", ("parsedate", "parsedatetime", "jsonsplit"))
+def test_column_required(test_db_and_path, command):
+    _, db_path = test_db_and_path
+    result = CliRunner().invoke(cli.cli, [command, db_path, "example"])
+    assert result.exit_code == 2, result.output
+    assert "Error: Missing argument 'COLUMNS...'" in result.output
+
+
 @pytest.mark.parametrize(
     "command,options,expected",
     (
